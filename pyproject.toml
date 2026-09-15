@@ -49,5 +49,5 @@ strict = true
 packages = ["ase"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "yaml.*", "networkx", "networkx.*", "tree_sitter_python"]
+module = ["yaml", "yaml.*", "networkx", "networkx.*", "tree_sitter_python", "langgraph", "langgraph.*"]
 ignore_missing_imports = true

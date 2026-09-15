@@ -40,6 +40,10 @@ class TraceStore(Protocol):
     def eval_results(self, suite: str | None = None) -> builtins.list[EvalResult]: ...
 
 
+class PlatformStore(RunStore, TraceStore, Protocol):
+    """Runs plus traces: what the agent, the evaluation harness and the feedback loop need."""
+
+
 class MemoryRunStore:
     """In-process store used by tests, the API default, and zero-credential development."""
 
