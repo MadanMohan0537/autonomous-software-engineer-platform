@@ -1,0 +1,16 @@
+version: 1
+authority:
+  open_draft_pull_request: human_approval
+  merge_pull_request: denied
+  deploy_production: denied
+execution:
+  network: denied_by_default
+  max_seconds: 120
+  max_changed_files: 25
+  denied_paths:
+    - .git
+    - .env
+    - .ssh
+    - node_modules
+    - .venv
+
