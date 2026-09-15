@@ -1,0 +1,12 @@
+{
+  "id": "demo-refund-001",
+  "repository": "fixtures/refund-service",
+  "issue": {
+    "number": 1,
+    "title": "Refund calculation rejects zero-value adjustments",
+    "body": "The calculation should allow a zero adjustment while rejecting negative values."
+  },
+  "expected_files": ["refunds.py", "test_refunds.py"],
+  "required_checks": ["tests", "test-integrity", "patch-policy"]
+}
+

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ASE Review Console</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#08111f;--card:#111d30;--text:#e8eef8;--muted:#96a6be;--accent:#65a8ff;--border:#263752}
+    @media(prefers-color-scheme:light){:root{--bg:#f5f7fb;--card:#fff;--text:#132238;--muted:#5d6d83;--accent:#1769db;--border:#dbe3ee}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 Inter,system-ui,sans-serif}
+    main{max-width:1080px;margin:auto;padding:56px 24px}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:32px}
+    h1{font-size:clamp(2rem,5vw,3.8rem);line-height:1;margin:.2rem 0}p{color:var(--muted)}.badge{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+    button{background:var(--accent);color:white;border:0;border-radius:10px;padding:10px 15px;font-weight:700;cursor:pointer}code{color:var(--accent)}
+    ul{padding-left:20px}#runs{margin-top:20px}.empty{border:1px dashed var(--border);border-radius:14px;padding:24px;color:var(--muted)}
+  </style>
+</head>
+<body><main>
+  <header><div><div class="badge">Human-governed engineering</div><h1>Review Console</h1><p>Inspect plans, evidence and quality gates before an agent may proceed.</p></div><button onclick="loadRuns()">Refresh runs</button></header>
+  <section class="grid">
+    <article class="card"><strong>Repository intelligence</strong><p>AST symbols, relationships and explainable context.</p></article>
+    <article class="card"><strong>Approval gates</strong><p>Plans and draft PRs pause for an explicit human decision.</p></article>
+    <article class="card"><strong>Verification evidence</strong><p>Policy, lint, types, tests and mutation results remain inspectable.</p></article>
+  </section>
+  <section id="runs"><div class="empty">No runs loaded.</div></section>
+</main><script>
+async function loadRuns(){const target=document.getElementById('runs');try{const runs=await fetch('/api/runs').then(r=>r.json());target.innerHTML=runs.length?runs.map(run=>`<article class="card"><div class="badge">${run.state}</div><h2>${escapeHtml(run.issue.title)}</h2><p><code>${run.id}</code> · ${run.context.length} context files · ${run.events.length} events</p></article>`).join(''):'<div class="empty">No agent runs have been created.</div>'}catch(e){target.innerHTML='<div class="empty">The API could not be reached.</div>'}}
+function escapeHtml(value){const node=document.createElement('div');node.textContent=value;return node.innerHTML}loadRuns();
+</script></body></html>
+
