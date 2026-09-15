@@ -8,10 +8,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from ase.contracts import Issue
 from ase.feedback import FeedbackStore, ReviewFeedback
+from ase.ide import IDEWorkspace, WorkspacePathError
 from ase.orchestrator import InvalidTransition, Orchestrator
 from ase.persistence import SQLiteDatabase, SQLiteRunStore, TaskQueue
 from ase.webhooks import InvalidSignature, decode_issue_event, verify_signature
@@ -26,6 +28,7 @@ orchestrator = Orchestrator(store=SQLiteRunStore(database))
 task_queue = TaskQueue(database)
 feedback_store = FeedbackStore(Path(os.environ.get("ASE_FEEDBACK_PATH", ".ase/feedback.db")))
 STATIC = Path(__file__).parent / "static"
+app.mount("/assets", StaticFiles(directory=STATIC), name="assets")
 
 
 class AnalyzeRequest(BaseModel):
@@ -37,6 +40,15 @@ class ApprovalRequest(BaseModel):
     reason: str = ""
 
 
+class RecipeRequest(BaseModel):
+    recipe: str
+
+
+def ide_workspace() -> IDEWorkspace:
+    root = Path(os.environ.get("ASE_REPOSITORY_ROOT", Path.cwd())).resolve()
+    return IDEWorkspace(root)
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "version": "0.1.0"}
@@ -45,6 +57,46 @@ def health() -> dict[str, str]:
 @app.get("/")
 def console() -> FileResponse:
     return FileResponse(STATIC / "index.html")
+
+
+@app.get("/api/ide/tree")
+def ide_tree(path: str = "") -> list[dict[str, object]]:
+    try:
+        return [entry.__dict__ for entry in ide_workspace().tree(path)]
+    except WorkspacePathError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/ide/file")
+def ide_file(path: str) -> dict[str, str]:
+    try:
+        return {"path": path, "content": ide_workspace().read(path)}
+    except WorkspacePathError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/ide/diff")
+def ide_diff(path: str | None = None) -> dict[str, str]:
+    try:
+        return {"diff": ide_workspace().diff(path)}
+    except WorkspacePathError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/ide/search")
+def ide_search(query: str) -> list[dict[str, object]]:
+    try:
+        return [hit.__dict__ for hit in ide_workspace().search(query)]
+    except WorkspacePathError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/ide/run")
+def ide_run(request: RecipeRequest) -> dict[str, object]:
+    try:
+        return ide_workspace().run_recipe(request.recipe).model_dump(mode="json")
+    except WorkspacePathError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.post("/api/runs", status_code=201)

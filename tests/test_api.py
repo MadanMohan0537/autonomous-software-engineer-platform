@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import subprocess
 from pathlib import Path
 from uuid import uuid4
 
@@ -15,6 +16,8 @@ def test_health() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert client.get("/").status_code == 200
+    assert client.get("/assets/app.js").status_code == 200
 
 
 def test_create_and_get_run() -> None:
@@ -98,3 +101,15 @@ def test_authenticated_issue_webhook(monkeypatch: object) -> None:
     )
     assert response.status_code == 202
     assert response.json()["accepted"]
+
+
+def test_ide_endpoints(tmp_path: Path, monkeypatch: object) -> None:
+    (tmp_path / "app.py").write_text("def searchable(): pass\n", encoding="utf-8")
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    monkeypatch.setenv("ASE_REPOSITORY_ROOT", str(tmp_path))  # type: ignore[attr-defined]
+    tree = client.get("/api/ide/tree")
+    assert tree.status_code == 200
+    assert any(item["name"] == "app.py" for item in tree.json())
+    assert "searchable" in client.get("/api/ide/file", params={"path": "app.py"}).json()["content"]
+    assert client.get("/api/ide/search", params={"query": "searchable"}).json()[0]["line"] == 1
+    assert client.get("/api/ide/file", params={"path": "../escape"}).status_code == 400
