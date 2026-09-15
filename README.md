@@ -4,7 +4,8 @@
 
 **A governed, evidence-driven system for turning GitHub issues into tested draft pull requests.**
 
-[![Status](https://img.shields.io/badge/status-architecture%20phase-2563EB)](#implementation-status)
+[![CI](https://github.com/MadanMohan0537/autonomous-software-engineer-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/MadanMohan0537/autonomous-software-engineer-platform/actions/workflows/ci.yml)
+[![Status](https://img.shields.io/badge/status-v0.1%20foundation-2563EB)](#implementation-status)
 [![License](https://img.shields.io/badge/license-Apache--2.0-22C55E)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](#proposed-technology)
 [![Human approval](https://img.shields.io/badge/changes-human%20approved-F59E0B)](#governance-and-safety)
@@ -34,6 +35,41 @@ Coding agents can generate plausible patches, but a useful engineering system mu
 - Can the system learn from review outcomes without silently changing its authority?
 
 This platform treats planning, execution, verification, and review as separate governed stages.
+
+## Run the foundation
+
+Requires Python 3.11 or later.
+
+```bash
+git clone https://github.com/MadanMohan0537/autonomous-software-engineer-platform.git
+cd autonomous-software-engineer-platform
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+make check
+```
+
+Index a repository and write an inspectable manifest:
+
+```bash
+ase index /path/to/repository --output artifacts/index.json
+```
+
+Create an issue analysis and stop at the plan-approval gate:
+
+```bash
+ase analyze /path/to/repository \
+  --issue 42 \
+  --title "Refund calculation rejects zero-value adjustments"
+```
+
+Start the API and review console:
+
+```bash
+ASE_REPOSITORY_ROOT=/path/to/allowed/root uvicorn ase.api:app --reload
+```
+
+Open `http://127.0.0.1:8000`. API documentation is available at `/docs`.
 
 ## Intended workflow
 
@@ -321,25 +357,33 @@ This structure is the target architecture and will be introduced incrementally. 
 
 ## Implementation status
 
-The repository is currently in the **architecture phase**.
+The repository currently provides a tested **version 0.1 engineering foundation**.
 
 Completed:
 
-- Repository created
-- Product boundary defined
-- Architecture and module responsibilities documented
-- Governance constraints established
-- Evaluation strategy defined
+- Typed issues, runs, events, plans, commands, checks, and evaluation reports
+- Python AST symbol, import, and call extraction with multi-language file discovery
+- Explainable hybrid retrieval using issue terms, paths, symbols, and relationships
+- Explicit issue-to-plan state machine with a mandatory human approval gate
+- Deterministic command, path, and patch-scope policies
+- Constrained local development runner with captured execution evidence
+- Patch verification and test-integrity detection
+- Draft-only GitHub pull-request adapter boundary
+- FastAPI control plane and responsive review-console foundation
+- Trajectory scoring and a versioned benchmark-task example
+- Architecture, product requirements, threat model, and evaluation documentation
+- CI enforcement for linting, strict typing, tests, and coverage
 
 Not yet implemented:
 
-- Codebase indexing
-- Agent orchestration
-- Sandboxed execution
-- Test generation
-- GitHub App
-- Review console
-- Benchmark runs
+- Tree-sitter parsers beyond the Python AST implementation
+- PostgreSQL/pgvector persistence and semantic embeddings
+- Container or microVM isolation for untrusted repositories
+- Model-backed planning and patch generation
+- Automated test generation and mutation-runner integration
+- GitHub App installation and webhook delivery processing
+- Full review actions in the console
+- SWE-bench execution and published benchmark results
 - Model training or fine-tuning
 
 This section will be updated only when capabilities are implemented and verified.
