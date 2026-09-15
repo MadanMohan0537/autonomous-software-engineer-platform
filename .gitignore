@@ -11,5 +11,7 @@ build/
 *.egg-info/
 .env
 .ase/runs/
+.ase/*.db
+.ase/*.db-shm
+.ase/*.db-wal
 artifacts/
-
