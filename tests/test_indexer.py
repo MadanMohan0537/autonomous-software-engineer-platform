@@ -2,6 +2,7 @@ from pathlib import Path
 
 from ase.contracts import Issue
 from ase.repo_intelligence import HybridRetriever, RepositoryIndexer
+from ase.repo_intelligence.parsers import AstPythonParser
 
 
 def test_indexes_python_symbols_and_calls(tmp_path: Path) -> None:
@@ -27,11 +28,14 @@ def test_retrieval_explains_file_selection(tmp_path: Path) -> None:
     assert results[0].reason
 
 
-def test_invalid_python_is_retained_without_symbols(tmp_path: Path) -> None:
+def test_invalid_python_is_retained_and_errors_are_counted(tmp_path: Path) -> None:
     (tmp_path / "broken.py").write_text("def broken(:", encoding="utf-8")
     index = RepositoryIndexer().index(tmp_path)
     assert "broken.py" in index.files
-    assert not index.symbols
+    assert index.files["broken.py"].parse_errors >= 1
+    # The standard-library parser stops at the first syntax error and yields no symbols.
+    fallback = RepositoryIndexer(parser=AstPythonParser()).index(tmp_path)
+    assert not fallback.symbols and fallback.parser_name == "ast"
 
 
 def test_manifest_and_multiple_language_detection(tmp_path: Path) -> None:
