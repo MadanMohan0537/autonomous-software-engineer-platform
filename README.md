@@ -71,6 +71,23 @@ ASE_REPOSITORY_ROOT=/path/to/allowed/root uvicorn ase.api:app --reload
 
 Open `http://127.0.0.1:8000`. API documentation is available at `/docs`.
 
+### IDE workspace
+
+The root route now provides a complete governed engineering workspace:
+
+- Repository explorer and safe file preview
+- Full-repository search with file and line navigation
+- Working-tree diff inspection
+- Named test, lint, and type-check recipes
+- Issue-run creation and run selection
+- Retrieved-context evidence with relevance explanations
+- Plan review with explicit approve or request-changes actions
+- Agent event timeline, verification checks, and problem view
+- Responsive light and dark themes
+
+The terminal intentionally does not accept arbitrary commands. It invokes server-defined
+recipes through the same command policy used by the agent runtime.
+
 ## Intended workflow
 
 ```mermaid
@@ -376,6 +393,8 @@ Completed:
 - Draft-only GitHub pull-request adapter boundary
 - Authenticated GitHub issue webhooks and asynchronous analysis queueing
 - FastAPI control plane and responsive review-console foundation
+- Governed IDE workspace with explorer, search, file preview, diff, recipes, run inspector,
+  approval controls, timeline, checks, and problems
 - Structured reviewer-feedback ledger
 - OpenTelemetry initialization and secret-aware JSON logging
 - Trajectory scoring and a versioned benchmark-task example
