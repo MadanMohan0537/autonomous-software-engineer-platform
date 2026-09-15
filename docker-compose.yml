@@ -5,8 +5,11 @@ services:
       - "8000:8000"
     environment:
       ASE_REPOSITORY_ROOT: /workspace
+      ASE_DATABASE_PATH: /data/ase.db
+      ASE_FEEDBACK_PATH: /data/feedback.db
     volumes:
       - ./:/workspace:ro
+      - ase-data:/data
     read_only: true
     tmpfs:
       - /tmp
@@ -14,4 +17,23 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+  worker:
+    build: .
+    command: ["ase-worker"]
+    environment:
+      ASE_REPOSITORY_ROOT: /workspace
+      ASE_DATABASE_PATH: /data/ase.db
+    volumes:
+      - ./:/workspace:ro
+      - ase-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  ase-data:
 

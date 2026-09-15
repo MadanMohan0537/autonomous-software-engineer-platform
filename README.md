@@ -357,33 +357,42 @@ This structure is the target architecture and will be introduced incrementally. 
 
 ## Implementation status
 
-The repository currently provides a tested **version 0.1 engineering foundation**.
+The repository currently provides a tested **version 0.2 control-plane foundation**.
 
 Completed:
 
 - Typed issues, runs, events, plans, commands, checks, and evaluation reports
 - Python AST symbol, import, and call extraction with multi-language file discovery
+- Conservative symbol extraction for TypeScript, JavaScript, Go, Rust, and Java
 - Explainable hybrid retrieval using issue terms, paths, symbols, and relationships
+- Deterministic local embeddings with a replaceable embedding-provider contract
 - Explicit issue-to-plan state machine with a mandatory human approval gate
+- Durable SQLite run storage, task queue, migrations, and webhook idempotency
+- Git worktree lifecycle and policy-checked unified-diff application
 - Deterministic command, path, and patch-scope policies
 - Constrained local development runner with captured execution evidence
-- Patch verification and test-integrity detection
+- Patch verification, mutation-result parsing, and test-integrity detection
+- OpenAI-compatible structured planning and regression-test proposal adapters
 - Draft-only GitHub pull-request adapter boundary
+- Authenticated GitHub issue webhooks and asynchronous analysis queueing
 - FastAPI control plane and responsive review-console foundation
+- Structured reviewer-feedback ledger
+- OpenTelemetry initialization and secret-aware JSON logging
 - Trajectory scoring and a versioned benchmark-task example
-- Architecture, product requirements, threat model, and evaluation documentation
+- Docker Compose and hardened Kubernetes deployment manifests
+- Architecture, product requirements, threat model, evaluation, and operations documentation
 - CI enforcement for linting, strict typing, tests, and coverage
 
 Not yet implemented:
 
-- Tree-sitter parsers beyond the Python AST implementation
-- PostgreSQL/pgvector persistence and semantic embeddings
+- Native Tree-sitter parsing; non-Python languages currently use conservative extractors
+- PostgreSQL/pgvector deployment; durable local storage currently uses SQLite
 - Container or microVM isolation for untrusted repositories
-- Model-backed planning and patch generation
-- Automated test generation and mutation-runner integration
-- GitHub App installation and webhook delivery processing
+- Model-generated patch production; planning and test proposals are implemented
+- Live GitHub App installation and installation-token exchange
 - Full review actions in the console
 - SWE-bench execution and published benchmark results
+- Sentinel service integration and shared run ingestion
 - Model training or fine-tuning
 
 This section will be updated only when capabilities are implemented and verified.
