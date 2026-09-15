@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from ase.contracts import Issue
+from ase.feedback import FeedbackStore, ReviewFeedback
 from ase.orchestrator import InvalidTransition, Orchestrator
+from ase.persistence import SQLiteDatabase, SQLiteRunStore, TaskQueue
+from ase.webhooks import InvalidSignature, decode_issue_event, verify_signature
 
 app = FastAPI(
     title="Autonomous Software Engineer Platform",
     version="0.1.0",
     description="Governed issue-to-draft-PR control plane",
 )
-orchestrator = Orchestrator()
+database = SQLiteDatabase(Path(os.environ.get("ASE_DATABASE_PATH", ".ase/ase.db")))
+orchestrator = Orchestrator(store=SQLiteRunStore(database))
+task_queue = TaskQueue(database)
+feedback_store = FeedbackStore(Path(os.environ.get("ASE_FEEDBACK_PATH", ".ase/feedback.db")))
 STATIC = Path(__file__).parent / "static"
 
 
@@ -84,3 +91,56 @@ def review_plan(run_id: str, request: ApprovalRequest) -> dict[str, object]:
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc)) from exc
     return run.model_dump(mode="json")
+
+
+@app.post("/api/runs/{run_id}/feedback", status_code=201)
+def add_feedback(run_id: str, feedback: ReviewFeedback) -> dict[str, int]:
+    if feedback.run_id != run_id:
+        raise HTTPException(400, "run ID does not match request path")
+    if orchestrator.store.get(run_id) is None:
+        raise HTTPException(404, "run not found")
+    return {"id": feedback_store.append(feedback)}
+
+
+@app.get("/api/runs/{run_id}/feedback")
+def list_feedback(run_id: str) -> list[dict[str, object]]:
+    return [item.model_dump(mode="json") for item in feedback_store.for_run(run_id)]
+
+
+@app.post("/api/github/webhook", status_code=202)
+async def github_webhook(
+    request: Request,
+    x_github_event: str = Header(alias="X-GitHub-Event"),
+    x_github_delivery: str = Header(alias="X-GitHub-Delivery"),
+    x_hub_signature_256: str | None = Header(default=None, alias="X-Hub-Signature-256"),
+) -> dict[str, object]:
+    secret = os.environ.get("GITHUB_WEBHOOK_SECRET")
+    if not secret:
+        raise HTTPException(503, "GitHub webhook secret is not configured")
+    body = await request.body()
+    try:
+        verify_signature(body, x_hub_signature_256, secret)
+    except InvalidSignature as exc:
+        raise HTTPException(401, str(exc)) from exc
+    if not task_queue.record_delivery(x_github_delivery, x_github_event):
+        return {"accepted": False, "reason": "duplicate delivery"}
+    if x_github_event != "issues":
+        return {"accepted": False, "reason": "event ignored"}
+    event = decode_issue_event(json.loads(body))
+    if event.action not in {"opened", "labeled"} or "ase:ready" not in event.labels:
+        return {"accepted": False, "reason": "issue is not ready"}
+    run = orchestrator.create(
+        Issue(
+            repository=event.repository,
+            number=event.number,
+            title=event.title,
+            body=event.body,
+            labels=event.labels,
+        )
+    )
+    task_id = task_queue.enqueue(
+        run.id,
+        "analyze",
+        json.dumps({"issue": run.issue.model_dump(), "path": event.repository.split("/")[-1]}),
+    )
+    return {"accepted": True, "run_id": run.id, "task_id": task_id}

@@ -1,4 +1,8 @@
+import hashlib
+import hmac
+import json
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -50,3 +54,47 @@ def test_analyze_rejects_outside_root(tmp_path: Path, monkeypatch: object) -> No
     run_id = response.json()["id"]
     denied = client.post(f"/api/runs/{run_id}/analyze", json={"repository_path": "/"})
     assert denied.status_code == 403
+
+
+def test_feedback_endpoints() -> None:
+    created = client.post(
+        "/api/runs",
+        json={"repository": "owner/repo", "number": 15, "title": "Feedback"},
+    ).json()
+    payload = {
+        "run_id": created["id"],
+        "stage": "plan",
+        "decision": "approved",
+        "reason_codes": [],
+    }
+    assert client.post(f"/api/runs/{created['id']}/feedback", json=payload).status_code == 201
+    assert client.get(f"/api/runs/{created['id']}/feedback").json()[0]["stage"] == "plan"
+
+
+def test_authenticated_issue_webhook(monkeypatch: object) -> None:
+    secret = "webhook-secret"
+    monkeypatch.setenv("GITHUB_WEBHOOK_SECRET", secret)  # type: ignore[attr-defined]
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": "owner/demo"},
+        "issue": {
+            "number": 16,
+            "title": "Webhook bug",
+            "body": "Details",
+            "labels": [{"name": "ase:ready"}],
+        },
+    }
+    body = json.dumps(payload).encode()
+    signature = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    response = client.post(
+        "/api/github/webhook",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-GitHub-Event": "issues",
+            "X-GitHub-Delivery": f"delivery-test-{uuid4().hex}",
+            "X-Hub-Signature-256": signature,
+        },
+    )
+    assert response.status_code == 202
+    assert response.json()["accepted"]
