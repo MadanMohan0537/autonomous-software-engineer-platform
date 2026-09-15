@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ase.contracts import Relationship, Symbol
+from ase.repo_intelligence.language_parser import parse_symbols
 
 SUPPORTED_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java"}
 IGNORED_PARTS = {".git", ".venv", "node_modules", "dist", "build", "__pycache__"}
@@ -67,6 +68,8 @@ class RepositoryIndexer:
             )
             if path.suffix == ".py":
                 self._index_python(relative, text, index)
+            else:
+                self._index_generic(relative, text, language, index)
         return index
 
     @staticmethod
@@ -139,6 +142,20 @@ class RepositoryIndexer:
                 visitor.generic_visit(node)
 
         Visitor().visit(tree)
+
+    @staticmethod
+    def _index_generic(path: str, text: str, language: str, index: RepositoryIndex) -> None:
+        for parsed in parse_symbols(language, text):
+            identifier = f"{path}:{parsed.name}"
+            index.symbols[identifier] = Symbol(
+                id=identifier,
+                path=path,
+                name=parsed.name,
+                kind=parsed.kind,
+                start_line=parsed.line,
+                end_line=parsed.line,
+                language=language,
+            )
 
     @staticmethod
     def _add_symbol(
