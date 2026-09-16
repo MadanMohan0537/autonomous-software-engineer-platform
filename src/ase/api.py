@@ -84,3 +84,28 @@ def review_plan(run_id: str, request: ApprovalRequest) -> dict[str, object]:
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc)) from exc
     return run.model_dump(mode="json")
+
+
+@app.post("/api/runs/{run_id}/pr-review")
+def review_pr(run_id: str, request: ApprovalRequest) -> dict[str, object]:
+    try:
+        run = orchestrator.approve_pr(run_id, request.approved, request.reason)
+    except KeyError as exc:
+        raise HTTPException(404, "run not found") from exc
+    except InvalidTransition as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return run.model_dump(mode="json")
+
+
+@app.get("/api/runs/{run_id}/trace")
+def trace(run_id: str) -> dict[str, object]:
+    """Every model step, patch, test report and review the run produced."""
+    if orchestrator.store.get(run_id) is None:
+        raise HTTPException(404, "run not found")
+    store = orchestrator.store
+    return {
+        "steps": [item.model_dump(mode="json") for item in store.steps(run_id)],
+        "patches": [item.model_dump(mode="json") for item in store.patches(run_id)],
+        "test_reports": [item.model_dump(mode="json") for item in store.test_reports(run_id)],
+        "reviews": [item.model_dump(mode="json") for item in store.reviews(run_id)],
+    }

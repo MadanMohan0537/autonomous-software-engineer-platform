@@ -7,7 +7,7 @@ from pathlib import Path
 from ase.contracts import AgentRun, Decision, Issue, RunState
 from ase.planning import DeterministicPlanner, Planner
 from ase.repo_intelligence import HybridRetriever, RepositoryIndexer
-from ase.store import MemoryRunStore, RunStore
+from ase.store import MemoryRunStore, PlatformStore
 
 
 class InvalidTransition(RuntimeError):
@@ -15,8 +15,8 @@ class InvalidTransition(RuntimeError):
 
 
 class Orchestrator:
-    def __init__(self, store: RunStore | None = None, planner: Planner | None = None) -> None:
-        self.store = store or MemoryRunStore()
+    def __init__(self, store: PlatformStore | None = None, planner: Planner | None = None) -> None:
+        self.store: PlatformStore = store or MemoryRunStore()
         self.planner = planner or DeterministicPlanner()
         self.indexer = RepositoryIndexer()
         self.retriever = HybridRetriever()
@@ -62,6 +62,17 @@ class Orchestrator:
         run.evaluation = report
         run.record("patch_evaluated", passed=report.passed)
         run.state = RunState.AWAIT_PR_APPROVAL if report.passed else RunState.FAILED
+        self.store.save(run)
+        return run
+
+    def approve_pr(self, run_id: str, approved: bool, reason: str = "") -> AgentRun:
+        """The second human gate: a verified patch still needs a named approval to become a PR."""
+        run = self._require(run_id)
+        self._expect(run, {RunState.AWAIT_PR_APPROVAL})
+        run.record("pr_reviewed", approved=approved, reason=reason)
+        run.state = RunState.OPEN_DRAFT_PR if approved else RunState.FAILED
+        if not approved:
+            run.outcome = "rejected"
         self.store.save(run)
         return run
 

@@ -34,3 +34,15 @@ def test_invalid_transition_is_rejected() -> None:
     run = orchestrator.create(Issue(repository="demo", number=1, title="Bug"))
     with pytest.raises(InvalidTransition):
         orchestrator.approve_plan(run.id, True)
+
+
+def test_pr_approval_gate_transitions() -> None:
+    orchestrator = Orchestrator()
+    run = orchestrator.create(Issue(repository="demo", number=3, title="Bug"))
+    with pytest.raises(InvalidTransition):
+        orchestrator.approve_pr(run.id, True)
+    run.state = RunState.AWAIT_PR_APPROVAL
+    orchestrator.store.save(run)
+    approved = orchestrator.approve_pr(run.id, True, "looks right")
+    assert approved.state == RunState.OPEN_DRAFT_PR
+    assert approved.events[-1].kind == "pr_reviewed" and approved.events[-1].payload["approved"]

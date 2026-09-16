@@ -71,3 +71,10 @@ def fixture_repo(tmp_path: Path) -> Path:
     git(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "add", ".")
     git(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "init")
     return root
+
+
+@pytest.fixture(autouse=True)
+def _no_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never talk to real services, whatever the developer's shell has exported."""
+    for name in ("GITHUB_TOKEN", "GH_TOKEN", "ANTHROPIC_API_KEY", "VOYAGE_API_KEY", "ASE_SANDBOX"):
+        monkeypatch.delenv(name, raising=False)
