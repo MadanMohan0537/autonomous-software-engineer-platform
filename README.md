@@ -365,8 +365,9 @@ Repository-local policy is configured through the versioned file `.ase/policy.ya
 ```
 
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the file-by-file layout;
-[docs/DESIGN.md](docs/DESIGN.md) explains each module and [docs/adr/](docs/adr/README.md)
-records the decisions behind them.
+[docs/DESIGN.md](docs/DESIGN.md) explains each module, [docs/adr/](docs/adr/README.md)
+records the decisions behind them, and [docs/BACKLOG.md](docs/BACKLOG.md) is the next
+weekend's work with acceptance criteria.
 
 ## Delivery roadmap
 
