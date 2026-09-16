@@ -11,16 +11,34 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the eval harvester and the knowledge index read git history
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: pip install -e '.[dev]'
+      # every optional extra is installed here so the tree-sitter parser and the
+      # LangGraph workflow are exercised, not just their standard-library fallbacks
+      - run: pip install -e '.[dev,index,graph,sandbox]'
       - run: ruff check .
+      - run: ruff format --check .
       - run: mypy src
       - run: pytest --cov=ase --cov-report=term-missing --cov-fail-under=85
-
+      - name: CLI smoke test (no network, no credentials)
+        env:
+          ASE_DATA_DIR: ${{ runner.temp }}/ase
+        run: |
+          set -euo pipefail
+          ase index . --output "$RUNNER_TEMP/index.json"
+          ase knowledge build .
+          ase knowledge search . "how are pull request reviews mirrored" -k 3
+          ase knowledge eval . --limit 5
+          ase eval harvest . --limit 2 --output "$RUNNER_TEMP/suite.json"
+          ase mutate . --paths src/ase/policy.py --tests tests/test_policy.py --budget 120
+          printf '[{"requests":100,"errors":0,"p95_ms":100},{"requests":100,"errors":0,"p95_ms":100}]' > "$RUNNER_TEMP/windows.json"
+          ase canary simulate "$RUNNER_TEMP/windows.json"
