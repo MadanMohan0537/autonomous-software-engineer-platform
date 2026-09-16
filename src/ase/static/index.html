@@ -1,30 +1,20 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ASE Review Console</title>
-  <style>
-    :root{color-scheme:light dark;--bg:#08111f;--card:#111d30;--text:#e8eef8;--muted:#96a6be;--accent:#65a8ff;--border:#263752}
-    @media(prefers-color-scheme:light){:root{--bg:#f5f7fb;--card:#fff;--text:#132238;--muted:#5d6d83;--accent:#1769db;--border:#dbe3ee}}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 Inter,system-ui,sans-serif}
-    main{max-width:1080px;margin:auto;padding:56px 24px}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:32px}
-    h1{font-size:clamp(2rem,5vw,3.8rem);line-height:1;margin:.2rem 0}p{color:var(--muted)}.badge{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
-    button{background:var(--accent);color:white;border:0;border-radius:10px;padding:10px 15px;font-weight:700;cursor:pointer}code{color:var(--accent)}
-    ul{padding-left:20px}#runs{margin-top:20px}.empty{border:1px dashed var(--border);border-radius:14px;padding:24px;color:var(--muted)}
-  </style>
-</head>
-<body><main>
-  <header><div><div class="badge">Human-governed engineering</div><h1>Review Console</h1><p>Inspect plans, evidence and quality gates before an agent may proceed.</p></div><button onclick="loadRuns()">Refresh runs</button></header>
-  <section class="grid">
-    <article class="card"><strong>Repository intelligence</strong><p>AST symbols, relationships and explainable context.</p></article>
-    <article class="card"><strong>Approval gates</strong><p>Plans and draft PRs pause for an explicit human decision.</p></article>
-    <article class="card"><strong>Verification evidence</strong><p>Policy, lint, types, tests and mutation results remain inspectable.</p></article>
-  </section>
-  <section id="runs"><div class="empty">No runs loaded.</div></section>
-</main><script>
-async function loadRuns(){const target=document.getElementById('runs');try{const runs=await fetch('/api/runs').then(r=>r.json());target.innerHTML=runs.length?runs.map(run=>`<article class="card"><div class="badge">${run.state}</div><h2>${escapeHtml(run.issue.title)}</h2><p><code>${run.id}</code> · ${run.context.length} context files · ${run.events.length} events</p></article>`).join(''):'<div class="empty">No agent runs have been created.</div>'}catch(e){target.innerHTML='<div class="empty">The API could not be reached.</div>'}}
-function escapeHtml(value){const node=document.createElement('div');node.textContent=value;return node.innerHTML}loadRuns();
-</script></body></html>
-
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Human-governed autonomous software engineering workspace"><title>ASE Workspace</title><link rel="stylesheet" href="/assets/styles.css"></head>
+<body>
+<header class="topbar"><div class="brand"><span class="brand-mark">A</span><div><strong>ASE Workspace</strong><small>Human-governed engineering</small></div></div><div class="top-actions"><span id="connection" class="status"><i></i> Connecting</span><button class="icon-button" id="themeButton" aria-label="Toggle color theme">◐</button><button class="primary" id="newRunButton">New issue run</button></div></header>
+<main class="workspace">
+<aside class="activity" aria-label="Workspace views"><button class="activity-button active" data-view="explorer" aria-label="Explorer">▤</button><button class="activity-button" data-view="search" aria-label="Search">⌕</button><button class="activity-button" data-view="runs" aria-label="Agent runs">◎</button><button class="activity-button" data-view="policy" aria-label="Policy">◇</button></aside>
+<aside class="sidebar">
+<section class="side-view active" id="explorerView"><div class="panel-title"><span>Explorer</span><button id="refreshTree" aria-label="Refresh files">↻</button></div><div id="breadcrumbs" class="breadcrumbs"></div><div id="fileTree" class="file-tree" role="tree"></div></section>
+<section class="side-view" id="searchView"><div class="panel-title">Search</div><form id="searchForm" class="search-form"><label class="sr-only" for="searchInput">Search repository</label><input id="searchInput" placeholder="Search source code" autocomplete="off"></form><div id="searchResults" class="search-results"></div></section>
+<section class="side-view" id="runsView"><div class="panel-title"><span>Agent runs</span><button id="refreshRuns" aria-label="Refresh runs">↻</button></div><div id="runList" class="run-list"></div></section>
+<section class="side-view" id="policyView"><div class="panel-title">Authority policy</div><div class="policy-list"><div><span class="allow">Allowed</span><p>Read repository and run named checks</p></div><div><span class="review">Approval</span><p>Implementation plans and draft PRs</p></div><div><span class="deny">Denied</span><p>Merge, production deploy, arbitrary shell</p></div></div></section>
+</aside>
+<section class="center"><nav class="tabs" id="tabs" aria-label="Open files"><button class="tab active" data-tab="welcome">Welcome</button><button class="tab" data-tab="diff">Diff</button></nav><div class="editor-region">
+<section class="editor-pane active" id="welcomePane"><div class="welcome"><span class="eyebrow">Evidence before autonomy</span><h1>Turn an issue into a reviewable change.</h1><p>Explore the repository, inspect agent evidence, approve bounded plans, and run deterministic quality gates from one workspace.</p><div class="welcome-grid"><button data-action="new-run"><b>01</b><span>Create issue run<small>Start a governed analysis</small></span></button><button data-action="open-readme"><b>02</b><span>Open README<small>Review the product boundary</small></span></button><button data-action="run-tests"><b>03</b><span>Run test suite<small>Execute a named recipe</small></span></button></div></div></section>
+<section class="editor-pane" id="filePane"><div class="editor-meta"><span id="filePath">No file selected</span><span id="fileLanguage">TEXT</span></div><pre id="codeEditor" class="code-editor" tabindex="0"><code></code></pre></section>
+<section class="editor-pane" id="diffPane"><div class="editor-meta"><span>Working tree diff</span><button id="refreshDiff">Refresh</button></div><pre id="diffEditor" class="code-editor diff"><code></code></pre></section></div>
+<section class="bottom-panel"><nav class="bottom-tabs"><button class="active" data-bottom="terminal">Terminal</button><button data-bottom="timeline">Timeline</button><button data-bottom="checks">Checks</button><button data-bottom="problems">Problems <span id="problemCount">0</span></button><span class="spacer"></span><button id="collapsePanel" aria-label="Collapse panel">⌄</button></nav><div class="bottom-content active" id="terminalPanel"><div class="recipe-bar"><span>Named recipes</span><button data-recipe="tests">Tests</button><button data-recipe="lint">Lint</button><button data-recipe="types">Types</button></div><pre id="terminalOutput" aria-live="polite">$ Select a verified recipe. Arbitrary shell commands are disabled.</pre></div><div class="bottom-content" id="timelinePanel"><ol id="timeline" class="timeline"></ol></div><div class="bottom-content" id="checksPanel"><div id="checks" class="checks empty">Select a run to inspect verification evidence.</div></div><div class="bottom-content" id="problemsPanel"><div id="problems" class="problems empty">No workspace problems reported.</div></div></section></section>
+<aside class="inspector"><div class="panel-title"><span>Agent inspector</span><span id="runState" class="state">Idle</span></div><section class="inspector-section"><h2>Issue</h2><div id="issueCard" class="empty-card">Select a run or create an issue.</div></section><section class="inspector-section"><h2>Retrieved context</h2><div id="contextList" class="context-list empty-card">No evidence retrieved.</div></section><section class="inspector-section"><h2>Implementation plan</h2><div id="planCard" class="empty-card">No plan proposed.</div><div id="approvalActions" class="approval-actions hidden"><button class="secondary" id="rejectPlan">Request changes</button><button class="primary" id="approvePlan">Approve plan</button></div></section></aside>
+</main><footer class="statusbar"><span>main</span><span id="activeRun">No active run</span><span class="spacer"></span><span>Policy enforced</span><span>UTF-8</span></footer>
+<dialog id="newRunDialog"><form method="dialog" id="newRunForm"><div class="dialog-header"><div><span class="eyebrow">New governed task</span><h2>Create issue run</h2></div><button value="cancel" aria-label="Close">×</button></div><label>Repository<input name="repository" value="MadanMohan0537/autonomous-software-engineer-platform" required></label><div class="form-row"><label>Issue number<input name="number" type="number" min="1" required></label><label>Labels<input name="labels" placeholder="bug, ase:ready"></label></div><label>Issue title<input name="title" required placeholder="Describe the engineering outcome"></label><label>Issue context<textarea name="body" rows="5" placeholder="Expected behavior, observed behavior, constraints"></textarea></label><div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button type="submit" value="default" class="primary">Create and analyze</button></div></form></dialog><div id="toast" class="toast" role="status" aria-live="polite"></div><script src="/assets/app.js" defer></script></body></html>

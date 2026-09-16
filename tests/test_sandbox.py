@@ -75,6 +75,7 @@ def test_docker_denies_like_local_and_reports_timeouts(tmp_path: Path) -> None:
 def test_build_sandbox_selects_backend(tmp_path: Path) -> None:
     assert isinstance(build_sandbox(tmp_path, "local"), LocalSandbox)
     assert isinstance(build_sandbox(tmp_path, "docker"), DockerSandbox)
+    assert isinstance(build_sandbox(tmp_path, "container"), DockerSandbox)
     with pytest.raises(ValueError):
         build_sandbox(tmp_path, "cloud")
     assert isinstance(DockerSandbox.available("definitely-not-a-binary"), bool)

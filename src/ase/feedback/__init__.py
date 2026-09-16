@@ -10,6 +10,7 @@ from ase.feedback.dataset import (
     load_dataset,
 )
 from ase.feedback.features import FEATURE_NAMES, TrajectoryFeatures, extract_features
+from ase.feedback.ledger import FeedbackDecision, FeedbackStore, ReviewFeedback
 from ase.feedback.reviews import ReviewSync
 from ase.feedback.reward import (
     HeuristicScorer,
@@ -23,10 +24,13 @@ from ase.feedback.reward import (
 __all__ = [
     "FEATURE_NAMES",
     "AgreementReport",
+    "FeedbackDecision",
+    "FeedbackStore",
     "HeuristicScorer",
     "LabeledTrajectory",
     "LogisticScorer",
     "NotEnoughLabels",
+    "ReviewFeedback",
     "ReviewSync",
     "Scorer",
     "TrajectoryFeatures",

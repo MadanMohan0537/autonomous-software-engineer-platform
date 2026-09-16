@@ -61,7 +61,7 @@ def test_sqlite_export_and_replace(tmp_path: Path) -> None:
     assert len(store.list()) == 1
     assert len(store.get(run.id).events) == 1  # type: ignore[union-attr]
     destination = tmp_path / "out" / "runs.jsonl"
-    assert store.export_jsonl("runs", destination) == 1
+    assert store.export_jsonl("agent_runs", destination) == 1
     assert run.id in destination.read_text(encoding="utf-8")
     with pytest.raises(KeyError):
         store.export_jsonl("nope", destination)

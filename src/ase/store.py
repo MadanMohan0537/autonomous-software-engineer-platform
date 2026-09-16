@@ -1,24 +1,19 @@
-"""Persistence: run store, trace store, and two implementations (memory and SQLite).
+"""Store protocols, the in-memory store, and the SQLite store opened by path.
 
 The trace store is the spine of the platform. Runs, steps, patches, test reports, reviews
 and evaluation results are written here before any other side effect, and the evaluation
-harness, the feedback loop and the reward scorer are all readers of these tables.
+harness, the feedback loop and the reward scorer are all readers of these tables. The
+SQLite implementation lives in `ase.persistence` next to the worker queue.
 """
 
 from __future__ import annotations
 
 import builtins
-import json
-import sqlite3
-from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Protocol, TypeVar
-
-from pydantic import BaseModel
+from typing import Protocol
 
 from ase.contracts import AgentRun, EvalResult, Patch, Review, Step, TestReport
-
-RecordT = TypeVar("RecordT", bound=BaseModel)
+from ase.persistence import SQLiteDatabase, SQLiteRunStore
 
 
 class RunStore(Protocol):
@@ -96,120 +91,12 @@ class MemoryRunStore:
         return [item for item in self._results if suite is None or item.suite == suite]
 
 
-_TABLES = {
-    "runs": "id TEXT PRIMARY KEY, state TEXT, updated_at TEXT, body TEXT NOT NULL",
-    "steps": "run_id TEXT, idx INTEGER, body TEXT NOT NULL, PRIMARY KEY (run_id, idx)",
-    "patches": "run_id TEXT, idx INTEGER, body TEXT NOT NULL",
-    "test_reports": "run_id TEXT, idx INTEGER, body TEXT NOT NULL",
-    "reviews": "run_id TEXT, pr_number INTEGER, body TEXT NOT NULL",
-    "eval_results": "suite TEXT, task_id TEXT, config_name TEXT, run_id TEXT, body TEXT NOT NULL",
-}
-
-
-class SqliteRunStore:
-    """Single-file store. Zero operations, and every table exports to JSONL for git."""
+class SqliteRunStore(SQLiteRunStore):
+    """`SQLiteRunStore` opened from a path: runs and traces in one file, JSONL export."""
 
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path)
-        if self.path.parent and str(self.path) != ":memory:":
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.connection = sqlite3.connect(str(self.path))
-        self.connection.execute("PRAGMA journal_mode=WAL")
-        for name, columns in _TABLES.items():
-            self.connection.execute(f"CREATE TABLE IF NOT EXISTS {name} ({columns})")
-        self.connection.commit()
+        super().__init__(SQLiteDatabase(self.path))
 
-    # -- runs -------------------------------------------------------------------------
-    def save(self, run: AgentRun) -> None:
-        self.connection.execute(
-            "INSERT OR REPLACE INTO runs (id, state, updated_at, body) VALUES (?, ?, ?, ?)",
-            (run.id, run.state.value, run.updated_at.isoformat(), run.model_dump_json()),
-        )
-        self.connection.commit()
-
-    def get(self, run_id: str) -> AgentRun | None:
-        row = self.connection.execute("SELECT body FROM runs WHERE id = ?", (run_id,)).fetchone()
-        return AgentRun.model_validate_json(row[0]) if row else None
-
-    def list(self) -> builtins.list[AgentRun]:
-        rows = self.connection.execute("SELECT body FROM runs ORDER BY updated_at").fetchall()
-        return [AgentRun.model_validate_json(row[0]) for row in rows]
-
-    # -- traces -----------------------------------------------------------------------
-    def add_step(self, step: Step) -> None:
-        self._insert("steps", ("run_id", "idx"), (step.run_id, step.index), step)
-
-    def steps(self, run_id: str) -> builtins.list[Step]:
-        return self._select(Step, "steps", "run_id = ?", (run_id,), order="idx")
-
-    def add_patch(self, patch: Patch) -> None:
-        self._insert("patches", ("run_id", "idx"), (patch.run_id, patch.step_index), patch)
-
-    def patches(self, run_id: str) -> builtins.list[Patch]:
-        return self._select(Patch, "patches", "run_id = ?", (run_id,), order="idx")
-
-    def add_test_report(self, report: TestReport) -> None:
-        self._insert("test_reports", ("run_id", "idx"), (report.run_id, report.step_index), report)
-
-    def test_reports(self, run_id: str) -> builtins.list[TestReport]:
-        return self._select(TestReport, "test_reports", "run_id = ?", (run_id,), order="idx")
-
-    def add_review(self, review: Review) -> None:
-        self._insert("reviews", ("run_id", "pr_number"), (review.run_id, review.pr_number), review)
-
-    def reviews(self, run_id: str | None = None) -> builtins.list[Review]:
-        if run_id is None:
-            return self._select(Review, "reviews", "1 = 1", (), order="rowid")
-        return self._select(Review, "reviews", "run_id = ?", (run_id,), order="rowid")
-
-    def add_eval_result(self, result: EvalResult) -> None:
-        self._insert(
-            "eval_results",
-            ("suite", "task_id", "config_name", "run_id"),
-            (result.suite, result.task_id, result.config_name, result.run_id),
-            result,
-        )
-
-    def eval_results(self, suite: str | None = None) -> builtins.list[EvalResult]:
-        if suite is None:
-            return self._select(EvalResult, "eval_results", "1 = 1", (), order="rowid")
-        return self._select(EvalResult, "eval_results", "suite = ?", (suite,), order="rowid")
-
-    # -- export -----------------------------------------------------------------------
-    def export_jsonl(self, table: str, destination: Path) -> int:
-        if table not in _TABLES:
-            raise KeyError(table)
-        rows = self.connection.execute(f"SELECT body FROM {table} ORDER BY rowid").fetchall()
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with destination.open("w", encoding="utf-8") as handle:
-            for row in rows:
-                handle.write(json.dumps(json.loads(row[0]), sort_keys=True) + "\n")
-        return len(rows)
-
-    def close(self) -> None:
-        self.connection.close()
-
-    # -- helpers ----------------------------------------------------------------------
-    def _insert(
-        self, table: str, columns: Sequence[str], values: Iterable[object], record: BaseModel
-    ) -> None:
-        names = ", ".join([*columns, "body"])
-        marks = ", ".join("?" for _ in [*columns, "body"])
-        self.connection.execute(
-            f"INSERT OR REPLACE INTO {table} ({names}) VALUES ({marks})",
-            (*values, record.model_dump_json()),
-        )
-        self.connection.commit()
-
-    def _select(
-        self,
-        model: type[RecordT],
-        table: str,
-        where: str,
-        params: tuple[object, ...],
-        order: str,
-    ) -> builtins.list[RecordT]:
-        rows = self.connection.execute(
-            f"SELECT body FROM {table} WHERE {where} ORDER BY {order}", params
-        ).fetchall()
-        return [model.model_validate_json(row[0]) for row in rows]
+    def close(self) -> None:  # connections are per call; kept for API symmetry
+        return None

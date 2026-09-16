@@ -1,8 +1,10 @@
 """Deterministic repository indexer: files, symbols, relationships and definitions.
 
 Python files are parsed with tree-sitter when it is installed and with the standard
-library otherwise (see `parsers.py`). Other languages are discovered and tokenised for
-lexical retrieval; their symbol extraction is a planned extension.
+library otherwise (see `parsers.py`): exact definition spans, docstrings, imports and
+calls. Other languages get conservative, regex-based line-level symbols
+(see `language_parser.py`) plus lexical tokens; they have no call graph and are chunked
+by window rather than by definition.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ase.contracts import Relationship, Symbol
+from ase.repo_intelligence.language_parser import parse_symbols
 from ase.repo_intelligence.parsers import Definition, SourceParser, select_parser
 
 SUPPORTED_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".md"}
@@ -108,6 +111,8 @@ class RepositoryIndexer:
                 record.parse_errors = parsed.parse_errors
                 index.symbols.update(parsed.symbols)
                 index.relationships.extend(parsed.relationships)
+            else:
+                self._index_generic(relative, text, language, index)
             index.files[relative] = record
         return index
 
@@ -129,3 +134,18 @@ class RepositoryIndexer:
     def _tokens(text: str) -> set[str]:
         normalized = "".join(char.lower() if char.isalnum() else " " for char in text)
         return {token for token in normalized.split() if len(token) > 2}
+
+    @staticmethod
+    def _index_generic(path: str, text: str, language: str, index: RepositoryIndex) -> None:
+        """Line-level symbols for non-Python sources (regex-based, no call graph)."""
+        for parsed in parse_symbols(language, text):
+            identifier = f"{path}:{parsed.name}"
+            index.symbols[identifier] = Symbol(
+                id=identifier,
+                path=path,
+                name=parsed.name,
+                kind=parsed.kind,
+                start_line=parsed.line,
+                end_line=parsed.line,
+                language=language,
+            )

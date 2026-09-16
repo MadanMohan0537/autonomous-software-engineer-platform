@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ase-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: ase-worker}
+  template:
+    metadata:
+      labels: {app: ase-worker}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: worker
+          image: ghcr.io/madanmohan0537/autonomous-software-engineer-platform:latest
+          command: ["ase-worker"]
+          envFrom: [{secretRef: {name: ase-secrets}}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 250m, memory: 256Mi}
+            limits: {cpu: "2", memory: 2Gi}
+

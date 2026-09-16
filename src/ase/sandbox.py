@@ -223,7 +223,7 @@ def build_sandbox(
     image: str = "ase-sandbox:latest",
     policy: PolicyEngine | None = None,
 ) -> Sandbox:
-    if backend == "docker":
+    if backend in {"docker", "container"}:
         return DockerSandbox(root, image=image, policy=policy)
     if backend == "local":
         return LocalSandbox(root, policy=policy)
