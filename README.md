@@ -12,6 +12,16 @@
 
 </div>
 
+## Choose a bounded first task
+
+Begin with repository indexing and inspect the evidence returned for a small question. Then use a narrowly scoped issue in a disposable working copy to evaluate the issue-to-draft-PR workflow.
+
+Review [CLI commands](src/ase/cli.py), [policy configuration](.ase/) and [development commands](Makefile) before enabling execution. Indexing, patch generation, sandbox execution and GitHub publication have different dependencies and permissions.
+
+A generated patch remains a proposal. Inspect the diff, verification evidence and approval state before publishing or merging it. Keep task inputs, policy version and execution artifacts with the draft PR so another reviewer can reproduce the decision.
+
+
+
 ## Overview
 
 The Autonomous Software Engineer Platform is an open, auditable control plane for repository-level engineering agents. Its intended workflow begins with a GitHub issue and ends with a reviewable draft pull request containing the proposed patch, generated or updated tests, execution evidence, risk notes, and a complete record of the agent's decisions.
